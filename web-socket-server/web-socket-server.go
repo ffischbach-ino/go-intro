@@ -8,6 +8,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type message struct {
+	User  string `json:"user"`
+	Value string `json:"value"`
+}
+
 var upgrader = websocket.Upgrader{}
 
 func homePage(w http.ResponseWriter, r *http.Request) {
@@ -24,18 +29,23 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("Client Connected ✅")
-
-	err = ws.WriteMessage(1, []byte("[server message] Hey there client!"))
-	if err != nil {
-		log.Println(err)
-	}
+	sendWelcomeMessage(ws)
 
 	listenOnClient(ws)
 }
 
-func listenOnClient(conn *websocket.Conn) {
+func sendWelcomeMessage(ws *websocket.Conn) {
+	welcomeMessage := message{"SERVER", "Hello there 👋"}
+
+	err := ws.WriteJSON(welcomeMessage)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func listenOnClient(ws *websocket.Conn) {
 	for {
-		messageType, p, err := conn.ReadMessage()
+		messageType, p, err := ws.ReadMessage()
 		if err != nil {
 			log.Println(err)
 			return
@@ -43,7 +53,7 @@ func listenOnClient(conn *websocket.Conn) {
 
 		fmt.Println(string(p))
 
-		if err := conn.WriteMessage(messageType, p); err != nil {
+		if err := ws.WriteMessage(messageType, p); err != nil {
 			log.Println(err)
 			return
 		}

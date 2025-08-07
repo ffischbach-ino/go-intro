@@ -1,53 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat</title>
   </head>
   <body>
-    <h2>Hello World</h2>
+    <main class="container">
+      <h2>WebSocket Demo  WebSocket-Demo</h2>
+
+      <div>
+        <label for="username">Username:</label>
+        <input value="Fynn" type="text" id="username">
+      </div>
+
+      <div>
+        <label for="message">Message:</label>
+        <input value="Hallo Welt!" type="text" id="message">
+      </div>
+
+      <button type="button" id="submitButton">Submit</button>
+      
+      <ul id="websocket_messages"></ul>
+    </main>
 
     <script>
-        let socket = new WebSocket("ws://127.0.0.1:8080/ws");
+      // Code wird erst ausgeführt, wenn das gesamte HTML-Dokument geladen ist.
+      document.addEventListener('DOMContentLoaded', () => {
+        // DOM-Elemente einmalig referenzieren (Caching)
+        const usernameInput = document.getElementById('username');
+        const messageInput = document.getElementById('message');
+        const submitButton = document.getElementById('submitButton');
+        const eventsList = document.getElementById('websocket_messages');
+
+        const socket = new WebSocket("ws://127.0.0.1:8080/ws");
         console.log("Attempting Connection...");
 
-        appendMessage = function (text) {
-                document
-                    .getElementById("websocket_events")
-                    .insertAdjacentHTML("beforeend", "<li>" + text + ";</li>");
-            };
+        /**
+         * Fügt eine Nachricht zur Liste im HTML hinzu.
+         * @param {string} text - Die anzuzeigende Nachricht.
+         */
+        const appendMessage = (text) => {
+          const listItem = document.createElement('li');
+          listItem.textContent = text;
+          eventsList.appendChild(listItem);
+        };
 
-        function sendMessage(event) {
-            console.log(event);
-            let message = document.getElementById("message").value;
-            socket.send("[client message] " + message);
-        }
+        const sendMessage = () => {
+          const messagePayload = {
+            user: usernameInput.value,
+            value: messageInput.value,
+          };
+          socket.send(JSON.stringify(messagePayload));
+          messageInput.value = ''; 
+        };
+
+        submitButton.addEventListener('click', sendMessage);
+        
+        messageInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
 
         socket.onopen = () => {
-            console.log("Successfully Connected");
+          console.log("Successfully Connected");
+          appendMessage("Status: Verbindung erfolgreich hergestellt.");
         };
 
-        socket.onclose = event => {
-            console.log("Socket Closed Connection: ", event);
-            socket.send("Client Closed!")
+        socket.onclose = (event) => {
+          console.log("Socket Closed Connection: ", event);
+          appendMessage("Status: Verbindung geschlossen.");
         };
 
-        socket.onerror = error => {
-            console.log("Socket Error: ", error);
+        socket.onerror = (error) => {
+          console.error("Socket Error: ", error);
+          appendMessage("Fehler: Verbindung fehlgeschlagen.");
         };
 
-        socket.onmessage = message => {
-            appendMessage(message.data)
-        }
+        socket.onmessage = (event) => {
+          try {
+            const messageData = JSON.parse(event.data);
+            console.log("Received:", messageData);
+            
+            const messageToDisplay = `[${messageData.user}] ${messageData.value}`;
+            appendMessage(messageToDisplay);
+          } catch (e) {
+            console.error("Error parsing message data:", e);
+            appendMessage(event.data);
+          }
+        };
+      });
     </script>
-
-    <main class="container">
-            Message: <input value="Hello!" type="text" id="message" />
-            <input
-                type="button"
-                value="Submit"
-                onclick="sendMessage(event)"
-            /><br />
-            <ul id="websocket_events"></ul>
-        </main>
   </body>
 </html>
