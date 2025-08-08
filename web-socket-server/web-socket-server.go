@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/websocket"
 )
@@ -29,7 +31,8 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("Client Connected ✅")
-	sendWelcomeMessage(ws)
+	go sendWelcomeMessage(ws)
+	go listenOnCliInput(ws)
 
 	listenOnClient(ws)
 }
@@ -40,6 +43,20 @@ func sendWelcomeMessage(ws *websocket.Conn) {
 	err := ws.WriteJSON(welcomeMessage)
 	if err != nil {
 		log.Println(err)
+	}
+}
+
+func listenOnCliInput(ws *websocket.Conn) {
+	for {
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Print("Enter text: ")
+		input, _ := reader.ReadString('\n')
+		var message = message{"SERVER", input}
+
+		err := ws.WriteJSON(message)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 }
 
